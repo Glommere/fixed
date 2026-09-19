@@ -4,14 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Book Shelf</title>
-    <!-- Подключение Font Awesome для иконок сердечек -->
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Подключение шрифтов Archivo Black и Dela Gothic One из Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Dela+Gothic+One&display=swap" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Dela+Gothic+One&family=Unbounded:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #DFF1F1; padding: 20px; color: #333; }
+        :root {
+            --book-visible-cover-width: 30px;
+            --book-grid-gap: 10px;
+            --spine-texture-size: cover;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #DFF1F1; padding: 20px; color: #333; margin: 0; }
         
-        /* Стили для заголовка MyBooks (остаются исходными для десктопа) */
         .site-header {
             font-family: 'Archivo Black', sans-serif;
             font-size: 92px; 
@@ -22,42 +27,17 @@
             text-transform: uppercase;
         }
 
-        /* Заголовки разделов («Моя библиотека», «Избранное») с новым шрифтом */
         h2 {
-            font-family: 'Dela Gothic One', sans-serif;
+            font-family: 'Unbounded', sans-serif;
             font-size: 28px;
             color: #333;
             margin-top: 40px;
             margin-bottom: 20px;
+            letter-spacing: -0.4px;
         }
 
-        /* Контейнер для инпута и крестика */
-        .search-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-            width: 70%; 
-        }
+        .container { max-width: 1000px; margin: 0 auto; }
 
-        /* Стиль крестика */
-        #clearSearchBtn {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            color: #888;
-            font-size: 25px;
-            display: none; 
-            user-select: none;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #clearSearchBtn:hover { color: #333; }
-        .container { max-width: 900px; margin: 0 auto; }
-
-        /* Строка поиска: */
         .search-control {
             display: flex;
             gap: 10px;
@@ -86,145 +66,486 @@
             background: white;
             font-size: 15px;
         }
-        .search-section, .library-section { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; justify-content: center; }
-        input { padding: 12px; width: 70%; border: 0px solid #ddd; border-radius: 16px; outline: none; transition: border-color 0.3s; }
-        button { padding: 12px 24px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 16px; font-weight: bold; }
+
+        #clearSearchBtn {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #888;
+            font-size: 25px;
+            display: none; 
+            user-select: none;
+            align-items: center;
+            justify-content: center;
+        }
+        #clearSearchBtn:hover { color: #333; }
+
+        button { padding: 12px 24px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 16px; font-weight: bold; font-family: 'Unbounded', sans-serif; }
         button:hover { background: #0056b3; }
-        
-        /* Сетка карточек для ПК (исходная) */
-        .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; margin-top: 20px; }
-        
-        /* Делает надпись о пустом списке во всю ширину экрана */
-        .book-grid > p {
-            grid-column: 1 / -1;
+
+        .book-shelf-grid {
+    display: grid;
+    grid-template-columns: repeat(8, max-content); 
+    row-gap: 100px;
+    column-gap: 20px; /* Увеличили боковой зазор, чтобы книги не перекрывали друг друга */
+    margin-top: 20px;
+    padding: 20px 25px; /* Увеличили отступы по бокам полки */
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    box-shadow: inset 0 4px 10px rgba(0,0,0,0.05);
+    align-items: flex-end;
+    min-height: 300px;
+}
+/* Сам контейнер полки теперь просто удерживает ряды и задает общий фон */
+.book-shelf-grid {
+    display: flex;
+    flex-direction: column;
+    row-gap: 100px; /* Расстояние между полками (рядами) по вертикали */
+    margin-top: 20px;
+    padding: 20px 25px; 
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    box-shadow: inset 0 4px 10px rgba(0,0,0,0.05);
+    min-height: 300px;
+}
+
+/* А это — каждый отдельный независимый ряд, строго до 8 книг */
+.book-shelf-row {
+    display: grid;
+    grid-template-columns: repeat(8, max-content); 
+    column-gap: 30px; /* Зазор между книгами, одинаковый для всех */
+    align-items: flex-end;
+    width: 100%;
+}
+
+
+        .book-shelf-grid > p {
+            width: 100%;
             font-size: 15px;
             color: #666;
             text-align: left;
+            margin: 0;
+            padding: 10px;
         }
 
-        /* Прозрачная кнопка-лайк в углу картинки */
-        .book-card .btn-like {
-            position: absolute;
-            top: 18px;
-            right: 22px;
-            background: transparent !important; 
-            border: none !important;            
-            width: auto !important;
-            height: auto !important;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 22px;            
-            color: #000000;             
-            transition: transform 0.2s ease, color 0.2s ease;
-            z-index: 10;
-            padding: 0 !important;
-        }
-
-        .book-card .btn-like:hover { transform: scale(1.15); }
-        .book-card .btn-like.active { color: #ff4757; }
-        .book-card .btn-like i { display: block; line-height: 1; }
-
-        /* Карточка книги */
-        .book-card { background: #fff; border: 1px solid #eee; padding: 15px; text-align: center; border-radius: 10px; transition: transform 0.2s; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; min-height: 330px; box-sizing: border-box; }
-        .book-card:hover { transform: translateY(-5px); }
-        .book-card img { 
-            width: 100%; 
-            height: auto; 
-            aspect-ratio: 2 / 3;
-            object-fit: cover; 
-            border-radius: 6px; 
-            margin-bottom: 10px; 
-            background: #ddd;
+        .book-3d-container {
+            width: calc(var(--spine-width, 45px) + var(--book-visible-cover-width));
+            height: 300px;
+            position: relative;
+            transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), z-index 0.1s;
+            perspective: 1000px;
+            z-index: 5;
+            cursor: grab;
+            margin-bottom: 40px;
             flex-shrink: 0;
-            display: block;
-            text-indent: -10000px;
+justify-self: start;
+        }
+        .book-3d-container:active {
+            cursor: grabbing;
         }
 
-        .book-card img:not([src]), 
-        .book-card img[src=""], 
-        .book-card img[src="undefined"],
-        .book-card img:invalid {
-            visibility: hidden;
+        .book-3d-container.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+        .book-3d-container.dragging .book-3d {
+            transform: rotateY(-30deg) !important;
+        }
+        .book-3d-container.dragging .cover-overlay {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+        }
+        .book-3d-container.dragging .book-spine {
+            width: var(--spine-width, 45px) !important;
+            display: flex !important;
+        }
+        .book-3d-container.dragging .book-cover {
+            left: var(--spine-width, 45px) !important;
         }
 
-        .book-card p { font-size: 14px; font-weight: 600; margin: 10px 0 2px 0; height: 40px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        
-        /* Стили для автора книги */
-        .book-author { font-size: 12px; color: #666; font-weight: 400; margin: 0 0 10px 0; height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        
-        .btn-add { background: #28a745; font-size: 13px; width: 100%; white-space: nowrap; padding: 12px 0; text-align: center; }
-        
-        /* Стиль для кнопки, когда книга уже добавлена */
-        .btn-added { background: #0056b3; font-size: 13px; width: 100%; white-space: nowrap; padding: 12px 0; text-align: center; }
-        .btn-added:hover { background: #004085; }
+        .book-3d {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform-origin: left center;
+            transform: rotateY(-30deg);
+        }
 
-        .btn-remove { background: #dc3545; font-size: 13px; width: 100%; margin-top: auto; padding: 12px 0; text-align: center; }
-        .btn-remove:hover {  background: #bd2130; }  
-        
-        /* Панель рейтинга */
-        .rating-overlay {
+        .book-3d-container:not(.dragging):hover {
+            width: calc(210px - 45px + var(--spine-width, 45px));
+            z-index: 99; 
+               }
+
+        .book-3d-container:not(.dragging):hover .book-3d {
+            transform: rotateY(-62deg);
+        }
+
+        .book-3d-container:not(.dragging):hover .book-spine {
+            width: 45px !important;
+            z-index: -1; 
+            pointer-events: none; 
+        }
+
+        .book-3d-container:not(.dragging):hover .book-cover {
+            left: 45px !important;
+            z-index: 999; 
+        }
+
+        .book-side {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            border-radius: 3px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            backface-visibility: hidden;
+        }
+
+        .book-spine {
+            width: var(--spine-width, 45px);
+            background-color: #4a154b;
+            color: white;
+            transform: rotateY(0deg);
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px 4px;
+            box-sizing: border-box;
+            border-right: 1px solid rgba(0,0,0,0.15);
+            transition: background-color 0.5s ease, width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+        }
+
+        .book-spine::after {
+            content: "";
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 60%;
-            background: rgba(255, 255, 255, 0.9);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 5px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            z-index: 5;
-            flex-direction: row;        
-            direction: ltr;
-            pointer-events: none; /* Отключаем на ПК по умолчанию, активируем при ховере */
+            height: 100%;
+            border-radius: 3px;
+            background-image: url('texture.png');
+            background-size: var(--spine-texture-size, cover);
+            background-repeat: no-repeat;
+            background-position: center;
+            mix-blend-mode: hard-light; 
+            pointer-events: none; 
         }
-        
-        /* На ПК рейтинг всплывает строго при наведении на саму карточку */
-        .book-card:hover .rating-overlay { opacity: 1; pointer-events: auto; }
-        .star { cursor: pointer; font-size: 25px; color: #ccc; transition: color 0.2s; }
-        
-        /* Подсветка звёзд при наведении (только если нет наведения на конкретную звезду) */
-        .rating-overlay:has(.star:hover) .star:hover,
-        .rating-overlay:has(.star:hover) .star:has(~ .star:hover) { color: #ffc107 !important; }
-        
-        /* Сброс цвета остальных звёзд при наведении, чтобы подсвечивались строго до курсора */
-        .rating-overlay:has(.star:hover) .star:hover ~ .star { color: #ccc !important; }
 
-        .star.active { color: #ffc107; }
-        .stars-display { color: #ffc107; font-size: 16px; margin-bottom: 5px; min-height: 20px; }
+        .book-spine-title {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            transform: rotate(180deg);
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            white-space: normal;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-height: 240px;
+            text-align: right;
+            text-transform: uppercase;
+            font-family: 'Unbounded', sans-serif;
+            line-height: 1.2;
+            z-index: 2; 
+        }
 
-        /* СТИЛИ ДЛЯ КАРТОЧКИ-ПЛЮСА */
-        .add-card-btn {
-            border: 2px solid #8CC0EB;
-            background: rgba(255, 255, 255, 0.5);
+        .book-cover {
+            width: 200px;
+            transform: rotateY(90deg);
+            transform-origin: left center;
+            left: var(--spine-width, 45px);
+            z-index: 4;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            border-radius: 0 5px 5px 0;
+            transition: left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform-style: preserve-3d; 
+        }
+
+        .book-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            border-radius: 0 5px 5px 0;
+        }
+
+        .cover-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 12px;
+            box-sizing: border-box;
+            pointer-events: none;
+            transform: translateZ(1px); 
+            z-index: 100;
+        }
+
+        .book-3d-container:not(.dragging):hover .cover-overlay,
+        .book-3d-container.show-mobile-overlay:not(.dragging) .cover-overlay {
+            opacity: 1;
+            visibility: visible;
+            isolation: isolate;
+            z-index: 99999 !important;
+            pointer-events:auto;  
+            transform: translateZ(1px); 
+        }
+
+        .overlay-top {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .overlay-mid {
+            text-align: center;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 5px;
+            padding: 0 5px;
+            z-index: 110;
+            align-items: center;
+        }
+
+        .overlay-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin: 0;
+            color: #111;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .overlay-author {
+            font-size: 11px;
+            color: #666;
+            margin: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: normal;
+        }
+
+        .rating-stars {
+            display: inline-flex;
+            justify-content: center;
+            gap: 4px;
+            margin: 5px 0;
+            cursor: pointer;
+            position: relative;
+            z-index: 150;
+        }
+        .rating-stars .fa-star {
+            font-size: 18px;
+            color: #ccc;
+            transition: color 0.15s ease-in-out;
+        }
+        .rating-stars:hover .fa-star {
+            color: #ffca28;
+        }
+        .rating-stars .fa-star:hover ~ .fa-star {
+            color: #ccc;
+        }
+        .rating-stars .fa-star.active {
+            color: #ffca28;
+        }
+
+        .btn-like {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 22px;
+            color: #000;
+            transition: transform 0.2s, color 0.2s;
+            padding: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-like:hover { transform: scale(1.2); }
+        .btn-like.active { color: #ff4757; }
+
+        .btn-remove { 
+            background: #dc3545; 
+            font-size: 12px; 
+            width: auto;
+            max-width: 85%;
+            margin: 0 auto;
+            padding: 8px 16px; 
+            text-align: center; 
+            border-radius: 20px; 
+            box-sizing: border-box;
+            display: block;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .btn-remove:hover { background: #bd2130; transform: scale(1.03); }
+
+        .add-shelf-slot {
+            width: 45px;
+            height: 300px;
+            border: 2px dashed #8CC0EB;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            min-height: 330px;
+            transition: all 0.3s;
+            box-sizing: border-box;
+            position: relative;
+            margin-bottom: 40px !important;
+justify-self: start; 
+margin-left: 70px;
+
         }
-        .add-card-btn:hover {
+        .add-shelf-slot:hover {
             background: #ffffff;
             border-color: #007bff;
+            width: 65px;
         }
-        .add-card-btn .plus-icon {
-            font-size: 50px;
-            color: #8CC0EB;
-            transition: color 0.2s;
-        }
-        .add-card-btn:hover .plus-icon {
-            color: #007bff;
+        .add-shelf-slot .plus-icon { font-size: 24px; color: #8CC0EB; transition: color 0.2s; }
+        .add-shelf-slot:hover .plus-icon { color: #007bff; }
+
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+            margin-bottom: 30px;
         }
 
-        /* СТИЛИ ДЛЯ МОДАЛЬНОГО ОКНА */
+        .search-book-card {
+            background: #fff;
+            border: 1px solid #eee;
+            padding: 15px;
+            text-align: center;
+            border-radius: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 340px;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .search-book-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.05);
+        }
+
+        .search-book-card img {
+            width: 100%;
+            aspect-ratio: 2 / 3;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background: #ddd;
+        }
+
+        .search-book-card p {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 5px 0 2px 0;
+            height: 40px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            color: #111;
+        }
+
+        .search-book-card .search-book-author {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+            height: 18px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .search-book-card .btn-search-like {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            color: #000;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            z-index: 10;
+            padding: 0;
+        }
+        .search-book-card .btn-search-like:hover { transform: scale(1.1); }
+        .search-book-card .btn-search-like.active { color: #ff4757; }
+
+        .search-book-card .btn-search-wishlist {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            color: #000;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            z-index: 12;
+            padding: 0;
+        }
+        .search-book-card .btn-search-wishlist:hover { transform: scale(1.1); }
+        .search-book-card .btn-search-wishlist.active { color: #ff9f43; }
+
+        .btn-add { background: #28a745; font-size: 13px; width: 100%; padding: 12px 0; text-align: center; border-radius: 12px; color: white; border: none; font-weight: bold; cursor: pointer; }
+        .btn-added { background: #0056b3; font-size: 13px; width: 100%; padding: 12px 0; text-align: center; border-radius: 12px; color: white; border: none; font-weight: bold; cursor: pointer; }
+        .btn-added:hover { background: #004085; }
+
         .modal {
             display: none; 
             position: fixed; 
-            z-index: 100; 
+            z-index: 2000; 
             left: 0; top: 0;
             width: 100%; height: 100%;
             background-color: rgba(0,0,0,0.5);
@@ -242,71 +563,58 @@
             text-align: center;
         }
         .modal-content h3 { margin-top: 0; margin-bottom: 20px; font-size: 22px; }
-        .modal-content input { width: 100%; margin-bottom: 15px; border: 1px solid #ddd; padding: 12px; box-sizing: border-box; }
+        .modal-content input { width: 100%; margin-bottom: 15px; border: 1px solid #ddd; padding: 12px; box-sizing: border-box; border-radius: 12px; }
         .modal-actions { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
-        .btn-cancel { background: #6c757d; }
-        .btn-cancel:hover { background: #5a6268; }
-        .close-modal {
-            position: absolute; right: 15px; top: 10px;
-            font-size: 24px; cursor: pointer; color: #aaa;
-        }
-        .close-modal:hover { color: #333; }
+        .close-modal { position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; color: #aaa; }
 
-        /* ==========================================================================
-           📱 ОТДЕЛЬНЫЕ СТИЛИ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ (ЭКРАНЫ МЕНЕЕ 768px)
-           ========================================================================== */
         @media (max-width: 767px) {
-            .site-header {
-                font-size: 48px;
-                letter-spacing: -3px;
-                margin-bottom: 20px;
+            .site-header { font-size: 48px; letter-spacing: -3px; }
+            h2 { font-size: 22px; text-align: center; }
+
+            .book-shelf-grid {
+                display: grid;
+    /* Автоматически размещаем элементы с фиксированной базовой шириной 75px */
+    grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); 
+    row-gap: 100px;
+    column-gap: 35px; /* Этот параметр теперь ИДЕАЛЬНО и одинаково управляет зазорами между всеми книгами */
+    margin-top: 20px;
+    padding: 20px 25px; 
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    box-shadow: inset 0 4px 10px rgba(0,0,0,0.05);
+    align-items: end;
+    min-height: 300px;
+}
+
+            .book-3d-container, .book-3d-container:hover {
+                width: 100% !important;
+                height: auto;
+                min-height: 240px;
             }
 
-            h2 {
-                font-size: 22px;
-                text-align: center;
-                margin-top: 30px;
+            .book-3d {
+                transform: none !important;
+                width: 100%;
+                height: 100%;
             }
 
-            .search-control {
-                padding: 0 10px;
-                box-sizing: border-box;
+            .book-spine { display: none; } 
+
+            .book-cover {
+                position: relative;
+                width: 100%;
+                height: 100%;
+                transform: none !important;
+                left: 0 !important;
+                border-radius: 12px;
+                aspect-ratio: 2 / 3;
             }
 
-            .search-input-wrapper input {
-                font-size: 16px; /* Защита от принудительного зума в iOS Safari */
-            }
-
-            /* На телефонах сетка автоматически строится в две адаптивные колонки */
-            .book-grid {
-                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-                gap: 12px;
-                padding: 0 10px;
-            }
-
-            .book-card {
-                min-height: 310px;
-                padding: 10px;
-            }
-
-            .add-card-btn {
-                min-height: 310px;
-            }
-
-            /* На тач-скринах убираем :hover-эффект всплытия рейтинга, 
-               чтобы он не перекрывал клики, и переключаем его через класс .show-rating */
-            .book-card:hover .rating-overlay {
-                opacity: 0;
-                pointer-events: none;
-            }
-
-            .book-card.show-rating .rating-overlay {
-                opacity: 1 !important;
-                pointer-events: auto !important;
-            }
-            
-            #clearSearchBtn {
-                right: 12px;
+            .add-shelf-slot, .add-shelf-slot:hover {
+                width: 100% !important;
+                min-height: 240px;
+                aspect-ratio: 2 / 3;
+                margin-left: 0;
             }
         }
     </style>
@@ -324,20 +632,22 @@
         <button onclick="searchBooks()">Найти</button>
     </div>
 
-    <div id="searchResults" class="book-grid"></div>
+    <div id="searchResults" class="search-grid"></div>
 
     <h2>Моя библиотека</h2>
-    <div id="library" class="book-grid"></div>
+    <div id="library" class="book-shelf-grid" data-shelf="myLibrary"></div>
 
     <h2>Избранное</h2>
-    <div id="favorites" class="book-grid"></div>
+    <div id="favorites" class="book-shelf-grid" data-shelf="myFavorites"></div>
+
+    <h2>Хочу прочитать</h2>
+    <div id="wishlist" class="book-shelf-grid" data-shelf="myWishlist"></div>
 </div>
 
-<!-- МОДАЛЬНОЕ ОКНО ДЛЯ ДОБАВЛЕНИЯ СВОЕЙ КНИГИ -->
 <div id="addBookModal" class="modal">
     <div class="modal-content">
         <span class="close-modal" onclick="closeModal()">&times;</span>
-        <h3>Добавить свою книгу</h3>
+        <h3 id="modalTitleText">Добавить свою книгу</h3>
         <input type="text" id="customTitle" placeholder="Название книги (обязательно)">
         <input type="text" id="customAuthor" placeholder="Автор книги (необязательно)">
         <input type="text" id="customCover" placeholder="Ссылка на URL обложки (необязательно)">
@@ -349,10 +659,104 @@
 </div>
 
 <script>
+    const calculatedSpineColors = {};
+    let currentTargetShelf = 'myLibrary';
+    let currentSearchResults = [];
+
     document.addEventListener('DOMContentLoaded', () => {
-        renderLibrary();
-        renderFavorites(); 
+        renderAllShelves();
+        setupGlobalDragAndDrop();
     });
+
+    function renderAllShelves() {
+        renderShelf('myLibrary', 'library');
+        renderShelf('myFavorites', 'favorites');
+        renderShelf('myWishlist', 'wishlist');
+    }
+
+    function updateSpineColorAsync(imgUrl, elementId) {
+        const spine = document.getElementById(elementId);
+        if (!spine) return;
+
+        if (calculatedSpineColors[imgUrl]) {
+            spine.style.backgroundColor = calculatedSpineColors[imgUrl];
+            return;
+        }
+
+        if (!imgUrl || imgUrl.includes('placeholder.com') || imgUrl.includes('via.placeholder')) {
+            const fallbackColor = '#4A2E5A';
+            calculatedSpineColors[imgUrl] = fallbackColor;
+            spine.style.backgroundColor = fallbackColor;
+            return;
+        }
+
+        const img = new Image();
+        img.crossOrigin = "Anonymous"; 
+        img.src = imgUrl;
+
+        img.onload = function() {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 10;
+                canvas.height = 10;
+                ctx.drawImage(img, 0, 0, 10, 10);
+                const imgData = ctx.getImageData(0, 0, 10, 10).data;
+                
+                let r = 0, g = 0, b = 0, count = 0;
+                for (let i = 0; i < imgData.length; i += 4) {
+                    const brightness = (imgData[i] + imgData[i+1] + imgData[i+2]) / 3;
+                    if (brightness > 15 && brightness < 240) {
+                        r += imgData[i];
+                        g += imgData[i+1];
+                        b += imgData[i+2];
+                        count++;
+                    }
+                }
+                
+                if (count === 0) {
+                    for (let i = 0; i < imgData.length; i += 4) {
+                        r += imgData[i];
+                        g += imgData[i+1];
+                        b += imgData[i+2];
+                        count++;
+                    }
+                }
+
+                r = Math.floor(r / count);
+                g = Math.floor(g / count);
+                b = Math.floor(b / count);
+
+                const finalColor = `rgb(${r}, ${g}, ${b})`;
+                calculatedSpineColors[imgUrl] = finalColor;
+                
+                const currentSpine = document.getElementById(elementId);
+                if (currentSpine) {
+                    currentSpine.style.backgroundColor = finalColor;
+                }
+            } catch (e) {
+                fallbackSpineColor(imgUrl, elementId);
+            }
+        };
+
+        img.onerror = function() {
+            fallbackSpineColor(imgUrl, elementId);
+        };
+    }
+
+    function fallbackSpineColor(str, elementId) {
+        const colors = ['#5C2525', '#2E5A44', '#1E3A5F', '#4A2E5A', '#665133', '#2A4D53', '#703347', '#3B3B3B'];
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const index = Math.abs(hash) % colors.length;
+        const finalColor = colors[index];
+        calculatedSpineColors[str] = finalColor;
+        
+        const spine = document.getElementById(elementId);
+        if (spine) spine.style.backgroundColor = finalColor;
+    }
 
     function debounce(func, delay) {
         let timeoutId;
@@ -368,30 +772,11 @@
             searchInput.addEventListener('input', debounce(() => {
                 searchBooks();
             }, 500));
-        }
-    });
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            searchInput.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter') {
-                    searchBooks();
-                }
-            });
-        }
-    });
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const searchInput = document.getElementById('searchInput');
-        const clearBtn = document.getElementById('clearSearchBtn');
-
-        if (searchInput && clearBtn) {
+            
             searchInput.addEventListener('input', () => {
-                if (searchInput.value.trim().length > 0) {
-                    clearBtn.style.display = 'flex'; 
-                } else {
-                    clearBtn.style.display = 'none';  
+                const clearBtn = document.getElementById('clearSearchBtn');
+                if (clearBtn) {
+                    clearBtn.style.display = searchInput.value.trim().length > 0 ? 'flex' : 'none';
                 }
             });
         }
@@ -405,131 +790,174 @@
             searchInput.value = ''; 
             searchInput.focus();    
         }
-        if (clearBtn) {
-            clearBtn.style.display = 'none'; 
-        }
+        if (clearBtn) clearBtn.style.display = 'none'; 
         searchBooks(); 
     }
 
     async function searchBooks() {
-        const query = document.getElementById('searchInput').value.trim();
-        const resultsDiv = document.getElementById('searchResults');
-        
-        if (!query) {
-            if (resultsDiv) resultsDiv.innerHTML = '';
-            return;
-        }
-
+    const query = document.getElementById('searchInput').value.trim();
+    const resultsDiv = document.getElementById('searchResults');
+    
+    if (!query) {
         if (resultsDiv) resultsDiv.innerHTML = '';
-
-        try {
-            const googleUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}`;
-            const response = await fetch(googleUrl);
-            const data = await response.json();
-
-            if (data.items && data.items.length > 0) {
-                renderResults(data.items.slice(0, 20), 'google');
-                return; 
-            } else {
-                await searchOpenLibrary(query); 
-            }
-        } catch (error) {
-            console.error('Ошибка Google Books, переключаюсь на Open Library:', error);
-            await searchOpenLibrary(query);
-        }
+        return;
     }
 
+    try {
+        const baseUrl = 'https://openlibrary.org';
+        
+        // Исправлено: запрашиваем editions.key вместо editions для безопасного подсчета популярности
+        const searchQueryParams = `q=${encodeURIComponent(query)}&fields=title,author_name,cover_i,language,editions.key&limit=50`;
+        
+        const response = await fetch(`${baseUrl}?${searchQueryParams}`);
+        
+        if (!response.ok) {
+            throw new Error(`Ошибка сервера: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.docs && data.docs.length > 0) {
+            // Сортировка по языку (русский и английский в приоритете)
+            const sortedDocs = data.docs.sort((a, b) => {
+                const aLang = a.language || [];
+                const bLang = b.language || [];
+                
+                const aHasTarget = aLang.includes('rus') || aLang.includes('eng');
+                const bHasTarget = bLang.includes('rus') || bLang.includes('eng');
+                
+                if (aHasTarget && !bHasTarget) return -1;
+                if (!aHasTarget && bHasTarget) return 1;
+                
+                // Безопасная сортировка по количеству ключей в массиве editions
+                const aCount = a.editions?.key?.length || 0;
+                const bCount = b.editions?.key?.length || 0;
+                return bCount - aCount;
+            });
+
+            const formattedDocs = sortedDocs.slice(0, 20).map(doc => ({
+                title: doc.title,
+                author_name: doc.author_name ? doc.author_name.join(', ') : 'Неизвестный автор',
+                cover_i: doc.cover_i
+            }));
+
+            renderSearchResults(formattedDocs, 'openlib');
+        } else {
+            resultsDiv.innerHTML = '<p style="padding: 10px; color: #666;">Ничего не найдено.</p>';
+        }
+    } catch (error) {
+        console.error('Ошибка при поиске в OpenLibrary:', error);
+        resultsDiv.innerHTML = '<p style="padding: 10px; color: #dc3545;">Произошла ошибка при поиске. Попробуйте еще раз позже.</p>';
+    }
+}
+
+
+
     async function searchOpenLibrary(query) {
-        const resultsDiv = document.getElementById('searchResults');
+        const fontDiv = document.getElementById('searchResults');
         try {
             const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}`;
             const response = await fetch(url);
             const data = await response.json();
 
             if (!data.docs || data.docs.length === 0) {
-                resultsDiv.innerHTML = '<p>Ни в одной библиотеке ничего не найдено.</p>';
+                fontDiv.innerHTML = '<p>Ни в одной библиотеке ничего не найдено.</p>';
                 return;
             }
 
             const formattedDocs = data.docs.slice(0, 20).map(doc => ({
                 title: doc.title,
                 author_name: doc.author_name ? doc.author_name.join(', ') : 'Неизвестный автор',
-                cover_i: doc.cover_i,
-                isGoogle: false
+                cover_i: doc.cover_i
             }));
 
-            renderResults(formattedDocs, 'openlib');
+            renderSearchResults(formattedDocs, 'openlib');
         } catch (error) {
-            console.error('Ошибка Open Library:', error);
-            resultsDiv.innerHTML = '<p>Ошибка при поиске во всех источниках.</p>';
+            fontDiv.innerHTML = '<p>Ошибка при поиске во всех источниках.</p>';
         }
     }
 
-    // Вспомогательная функция для переключения отображения рейтинга по тапу на мобилках
-    function handleCardTap(cardElement, event) {
-        // Если клик пришелся на интерактивную кнопку, не переключаем оверлей
-        if (event.target.closest('button') || event.target.closest('.star') || event.target.closest('#clearSearchBtn')) {
-            return;
+    function renderSearchResults(items, source) {
+    const resultsDiv = document.getElementById('searchResults');
+    resultsDiv.innerHTML = '';
+    
+    // Очищаем и заполняем наш безопасный глобальный массив данных
+    currentSearchResults = [];
+
+    const library = JSON.parse(localStorage.getItem('myLibrary')) || [];
+    const favorites = JSON.parse(localStorage.getItem('myFavorites')) || [];
+    const wishlist = JSON.parse(localStorage.getItem('myWishlist')) || [];
+
+    items.forEach((item, index) => {
+        let title, author, thumbnail;
+
+                if (source === 'google') {
+            const info = item.volumeInfo;
+            title = info.title;
+            author = info.authors ? info.authors.join(', ') : 'Неизвестный автор';
+            thumbnail = info.imageLinks && info.imageLinks.thumbnail 
+                ? info.imageLinks.thumbnail.replace('http:', 'https:') 
+                : 'https://placeholder.com';
+        } else {
+            title = item.title;
+            author = item.author_name;
+            thumbnail = item.cover_i 
+                ? `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg` 
+                : 'https://placeholder.com';
         }
+
+
+        // Сохраняем чистый объект книги в память
+        currentSearchResults.push({ title, author, img: thumbnail });
+
+        const isLiked = favorites.some(fav => fav.title === title);
+        const isAdded = library.some(book => book.title === title);
+        const isWished = wishlist.some(w => w.title === title);
+
+        const card = document.createElement('div');
+        card.className = 'search-book-card';
         
-        // Только для мобильных разрешений переключаем класс
+        // В onclick теперь передается ТОЛЬКО цифра index. Апострофы больше ничего не сломают!
+        card.innerHTML = `
+            <button class="btn-search-wishlist ${isWished ? 'active' : ''}" onclick="toggleWishlistByIndex(${index}, this); event.stopPropagation();" title="Хочу прочитать">
+                <i class="${isWished ? 'fa-solid' : 'fa-regular'} fa-bookmark"></i>
+            </button>
+            <button class="btn-search-like ${isLiked ? 'active' : ''}" onclick="toggleLikeByIndex(${index}, this); event.stopPropagation();" title="Избранное">
+                <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i>
+            </button>
+            <img src="${thumbnail}" alt="">
+            <p></p>
+            <div class="search-book-author"></div>
+            <button class="${isAdded ? 'btn-added' : 'btn-add'}" onclick="toggleLibraryBookByIndex(${index}, this); event.stopPropagation();">
+                ${isAdded ? 'Прочитано' : 'В прочитанное'}
+            </button>
+        `;
+        
+             // Безопасно наполняем карточку данными и возвращаем обложку:
+        const imgEl = card.querySelector('img');
+        imgEl.src = thumbnail; // Эта строчка вернет картинку книги на экран
+        imgEl.alt = title;     // Текстовое описание картинки для браузера
+        
+        card.querySelector('p').textContent = title;
+        card.querySelector('.search-book-author').textContent = author;
+
+        resultsDiv.appendChild(card);
+
+    });
+}
+
+
+
+
+    function handleMobileTap(containerElement, event) {
         if (window.innerWidth < 768) {
-            const currentActive = document.querySelector('.book-card.show-rating');
-            if (currentActive && currentActive !== cardElement) {
-                currentActive.classList.remove('show-rating');
+            if (event.target.closest('button') || event.target.closest('.rating-stars')) return;
+            const active = document.querySelector('.book-3d-container.show-mobile-overlay');
+            if (active && active !== containerElement) {
+                active.classList.remove('show-mobile-overlay');
             }
-            cardElement.classList.toggle('show-rating');
+            containerElement.classList.toggle('show-mobile-overlay');
         }
-    }
-
-    function renderResults(items, source) {
-        const resultsDiv = document.getElementById('searchResults');
-        resultsDiv.innerHTML = '';
-
-        const library = JSON.parse(localStorage.getItem('myLibrary')) || [];
-
-        items.forEach(item => {
-            let title, author, thumbnail;
-
-            if (source === 'google') {
-                const info = item.volumeInfo;
-                title = info.title;
-                author = info.authors ? info.authors.join(', ') : 'Неизвестный автор';
-                thumbnail = info.imageLinks && info.imageLinks.thumbnail 
-                    ? info.imageLinks.thumbnail.replace('http:', 'https:') 
-                    : 'https://via.placeholder.com/150x220?text=Нет+обложки';
-            } else {
-                title = item.title;
-                author = item.author_name;
-                thumbnail = item.cover_i 
-                    ? `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg` 
-                    : 'https://via.placeholder.com/150x220?text=Нет+обложки';
-            }
-
-            const card = document.createElement('div');
-            card.className = 'book-card';
-            card.setAttribute('onclick', 'handleCardTap(this, event)');
-            
-            const favorites = JSON.parse(localStorage.getItem('myFavorites')) || [];
-            const isLiked = favorites.some(fav => fav.title === title);
-            const safeTitle = title.replace(/'/g, "\'");
-            const safeAuthor = author.replace(/'/g, "\'");
-
-            const isAdded = library.some(book => book.title === title);
-            const buttonClass = isAdded ? 'btn-added' : 'btn-add';
-            const buttonText = isAdded ? 'Прочитано' : 'В прочитанное';
-
-            card.innerHTML = `
-                <button class="btn-like ${isLiked ? 'active' : ''}" onclick="toggleLike('${safeTitle}', '${safeAuthor}', '${thumbnail}', this); event.stopPropagation();">
-                    <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i>
-                </button>
-                <img src="${thumbnail}" alt="${title}">
-                <p>${title}</p>
-                <div class="book-author">${author}</div>
-                <button class="${buttonClass}" onclick="toggleLibraryBook('${safeTitle}', '${safeAuthor}', '${thumbnail}', this); event.stopPropagation();">${buttonText}</button>
-            `;
-            resultsDiv.appendChild(card);
-        });
     }
 
     function toggleLibraryBook(title, author, img, buttonElement) {
@@ -539,7 +967,6 @@
         if (index === -1) {
             library.push({ title, author, img, rating: 0 });
             localStorage.setItem('myLibrary', JSON.stringify(library));
-            
             if (buttonElement) {
                 buttonElement.className = 'btn-added';
                 buttonElement.textContent = 'Прочитано';
@@ -547,82 +974,259 @@
         } else {
             library.splice(index, 1);
             localStorage.setItem('myLibrary', JSON.stringify(library));
-            
             if (buttonElement) {
                 buttonElement.className = 'btn-add';
                 buttonElement.textContent = 'В прочитанное';
             }
         }
+        renderShelf('myLibrary', 'library');
+    }
+
+    function removeFromShelf(shelfKey, index, event) {
+        if(event) event.stopPropagation();
+        const data = JSON.parse(localStorage.getItem(shelfKey)) || [];
+        data.splice(index, 1);
+        localStorage.setItem(shelfKey, JSON.stringify(data));
         
-        renderLibrary();
-    }
-
-    function removeFromLibrary(index, event) {
-        if(event) event.stopPropagation();
-        const library = JSON.parse(localStorage.getItem('myLibrary')) || [];
-        library.splice(index, 1);
-        localStorage.setItem('myLibrary', JSON.stringify(library));
-        renderLibrary();
         searchBooks();
+        renderAllShelves();
     }
 
-    function setRating(index, rating, event) {
+    function setBookRating(title, rating, event) {
         if(event) event.stopPropagation();
-        const library = JSON.parse(localStorage.getItem('myLibrary')) || [];
-        library[index].rating = rating;
-        localStorage.setItem('myLibrary', JSON.stringify(library));
-        renderLibrary();
-    }
-
-    function renderLibrary() {
-        const library = JSON.parse(localStorage.getItem('myLibrary')) || [];
-        const libraryDiv = document.getElementById('library');
-        if (!libraryDiv) return;
-        libraryDiv.innerHTML = '';
-
-        library.forEach((book, index) => {
-            const card = document.createElement('div');
-            card.className = 'book-card';
-            card.setAttribute('onclick', 'handleCardTap(this, event)');
-            
-            let starsHTML = `<div class="rating-overlay">`;
-            for (let i = 1; i <= 5; i++) {
-                const isActive = i <= book.rating ? 'active' : '';
-                starsHTML += `<span class="star ${isActive}" onclick="setRating(${index}, ${i}, event)">★</span>`;
+        
+        ['myLibrary', 'myFavorites', 'myWishlist'].forEach(shelfKey => {
+            const list = JSON.parse(localStorage.getItem(shelfKey)) || [];
+            const idx = list.findIndex(b => b.title === title);
+            if (idx !== -1) {
+                list[idx].rating = rating;
+                localStorage.setItem(shelfKey, JSON.stringify(list));
             }
-            starsHTML += `</div>`;
-
-            const ratingStars = book.rating > 0 ? '★'.repeat(book.rating) : '';
-            const favorites = JSON.parse(localStorage.getItem('myFavorites')) || [];
-            const isLiked = favorites.some(fav => fav.title === book.title);
-
-            const bookAuthor = book.author || 'Неизвестный автор';
-            const safeTitle = book.title.replace(/'/g, "\'");
-            const safeAuthor = bookAuthor.replace(/'/g, "\'");
-
-            card.innerHTML = `
-                ${starsHTML}
-                <button class="btn-like ${isLiked ? 'active' : ''}" onclick="toggleLike('${safeTitle}', '${safeAuthor}', '${book.img}', this); event.stopPropagation();">
-                    <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i>
-                </button>
-                <img src="${book.img}" alt="${book.title}">
-                <div class="stars-display">${ratingStars}</div>
-                <p>${book.title}</p>
-                <div class="book-author">${bookAuthor}</div>
-                <button class="btn-remove" onclick="removeFromLibrary(${index}, event)">Удалить</button>
-            `;
-            libraryDiv.appendChild(card);
         });
 
-        const addCard = document.createElement('div');
-        addCard.className = 'book-card add-card-btn';
-        addCard.onclick = openModal;
-        addCard.innerHTML = `<div class="plus-icon"><i class="fas fa-plus"></i></div>`;
-        libraryDiv.appendChild(addCard);
+        const allContainers = document.querySelectorAll('.book-3d-container');
+        allContainers.forEach(container => {
+            const titleEl = container.querySelector('.overlay-title');
+            if (titleEl && titleEl.textContent === title) {
+                const starsContainer = container.querySelector('.rating-stars');
+                if (starsContainer) {
+                    const stars = starsContainer.querySelectorAll('.fa-star');
+                    stars.forEach((star, i) => {
+                        if (i < rating) {
+                            star.classList.add('active');
+                        } else {
+                            star.classList.remove('active');
+                        }
+                    });
+                }
+            }
+        });
     }
 
-    function openModal() {
-        document.getElementById('addBookModal').style.display = 'flex';
+    function getStarsHtml(currentRating, title) {
+        let starsHtml = `<div class="rating-stars">`;
+        for (let i = 1; i <= 5; i++) {
+            const isActive = i <= currentRating ? 'active' : '';
+            const safeTitle = title.replace(/'/g, "\'");
+            starsHtml += `<i class="fas fa-star ${isActive}" onclick="setBookRating('${safeTitle}', ${i}, event)"></i>`;
+        }
+        starsHtml += `</div>`;
+        return starsHtml;
+    }
+
+    function renderShelf(shelfKey, elementId) {
+    const shelfContainer = document.getElementById(elementId);
+    if (!shelfContainer) return;
+    shelfContainer.innerHTML = '';
+
+    const books = JSON.parse(localStorage.getItem(shelfKey)) || [];
+
+    if (books.length === 0 && shelfKey !== 'myLibrary' && shelfKey !== 'myWishlist') {
+        shelfContainer.innerHTML = '<p>Здесь пока пусто</p>';
+        return;
+    }
+
+    // Создаем массив всех элементов, которые нужно отрендерить (книги + кнопка Плюс)
+    const elementsToRender = [];
+
+    books.forEach((book, index) => {
+        const container = document.createElement('div');
+        container.className = 'book-3d-container';
+        container.setAttribute('draggable', 'true');
+        container.setAttribute('data-index', index);
+        container.setAttribute('data-shelf-source', shelfKey);
+        container.setAttribute('onclick', 'handleMobileTap(this, event)');
+
+        let spineWidth = 45;
+        if (book.title.length > 25) {
+            spineWidth = 75;
+        } else if (book.title.length > 12) {
+            spineWidth = 60;
+        }
+        container.style.setProperty('--spine-width', spineWidth + 'px');
+
+        const favorites = JSON.parse(localStorage.getItem('myFavorites')) || [];
+        const isLiked = favorites.some(fav => fav.title === book.title);
+
+        const safeTitle = book.title.replace(/'/g, "\\'");
+        const safeAuthor = (book.author || 'Неизвестный автор').replace(/'/g, "\\'");
+        const spineId = `${shelfKey}-spine-${index}`;
+        const bookRating = book.rating || 0;
+
+        container.innerHTML = `
+            <div class="book-3d">
+                <div id="${spineId}" class="book-side book-spine">
+                    <div class="book-spine-title">${book.title}</div>
+                </div>
+                <div class="book-side book-cover">
+                    <img src="${book.img}" alt="${book.title}">
+                    <div class="cover-overlay">
+                        <div class="overlay-top">
+                            <button class="btn-like ${isLiked ? 'active' : ''}" onclick="toggleLike('${safeTitle}', '${safeAuthor}', '${book.img}', this); event.stopPropagation();">
+                                <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i>
+                            </button>
+                        </div>
+                        <div class="overlay-mid">
+                            <h4 class="overlay-title">${book.title}</h4>
+                            <p class="overlay-author">${book.author || 'Неизвестный автор'}</p>
+                            ${getStarsHtml(bookRating, book.title)}
+                        </div>
+                        <button class="btn-remove" onclick="removeFromShelf('${shelfKey}', ${index}, event)">Удалить</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        elementsToRender.push({ type: 'book', element: container, img: book.img, spineId: spineId });
+    });
+
+    // Добавляем кнопку "Плюс", если это нужная полка
+    if (shelfKey === 'myLibrary' || shelfKey === 'myWishlist') {
+        const addCard = document.createElement('div');
+        addCard.className = 'add-shelf-slot';
+        addCard.onclick = () => openModal(shelfKey);
+        addCard.innerHTML = `<div class="plus-icon"><i class="fas fa-plus"></i></div>`;
+        elementsToRender.push({ type: 'slot', element: addCard });
+    }
+
+    // РАЗБИВКА НА НЕЗАВИСИМЫЕ РЯДЫ ПО 8 ЭЛЕМЕНТОВ:
+    let currentRow = null;
+    elementsToRender.forEach((item, index) => {
+        // Каждые 8 элементов создаем новый независимый контейнер-ряд
+        if (index % 8 === 0) {
+            currentRow = document.createElement('div');
+            currentRow.className = 'book-shelf-row'; // Добавляем новый класс для независимых рядов
+            shelfContainer.appendChild(currentRow);
+        }
+        
+        currentRow.appendChild(item.element);
+        
+        // Запускаем асинхронный расчет цвета корешка для книг
+        if (item.type === 'book') {
+            updateSpineColorAsync(item.img, item.spineId);
+        }
+    });
+}
+
+
+    function toggleLike(title, author, img, buttonElement) {
+        let favorites = JSON.parse(localStorage.getItem('myFavorites')) || [];
+        const index = favorites.findIndex(book => book.title === title);
+        
+        let currentRating = 0;
+        ['myLibrary', 'myWishlist'].forEach(k => {
+            const list = JSON.parse(localStorage.getItem(k)) || [];
+            const b = list.find(x => x.title === title);
+            if (b && b.rating) currentRating = b.rating;
+        });
+
+        let nowLiked = false;
+        if (index === -1) {
+            favorites.push({ title, author, img, rating: currentRating });
+            nowLiked = true;
+        } else {
+            favorites.splice(index, 1);
+            nowLiked = false;
+        }
+
+        localStorage.setItem('myFavorites', JSON.stringify(favorites));
+
+        if (buttonElement) {
+            const icon = buttonElement.querySelector('i');
+            if (nowLiked) {
+                buttonElement.classList.add('active');
+                if (icon) icon.className = 'fas fa-heart';
+            } else {
+                buttonElement.classList.remove('active');
+                if (icon) icon.className = 'far fa-heart';
+            }
+        }
+
+        searchBooks();
+        renderAllShelves();
+    }
+
+    function toggleWishlist(title, author, img, buttonElement) {
+    let wishlist = JSON.parse(localStorage.getItem('myWishlist')) || [];
+    const index = wishlist.findIndex(book => book.title === title);
+
+    let nowWished = false;
+    if (index === -1) {
+        wishlist.push({ title, author, img, rating: 0 });
+        nowWished = true;
+    } else {
+        wishlist.splice(index, 1);
+        nowWished = false;
+    }
+
+    localStorage.setItem('myWishlist', JSON.stringify(wishlist));
+
+    if (buttonElement) {
+        const icon = buttonElement.querySelector('i');
+        if (nowWished) {
+            buttonElement.classList.add('active');
+            if (icon) icon.className = 'fa-solid fa-bookmark'; // Оранжевая залитая
+        } else {
+            buttonElement.classList.remove('active');
+            if (icon) icon.className = 'fa-regular fa-bookmark'; // Обычный пустой контур
+        }
+    }
+
+    renderAllShelves();
+}
+
+// Новые безопасные обертки для кликов в поиске:
+function toggleWishlistByIndex(index, buttonElement) {
+    const book = currentSearchResults[index];
+    if (book) {
+        toggleWishlist(book.title, book.author, book.img, buttonElement);
+    }
+}
+
+function toggleLikeByIndex(index, buttonElement) {
+    const book = currentSearchResults[index];
+    if (book) {
+        toggleLike(book.title, book.author, book.img, buttonElement);
+    }
+}
+
+function toggleLibraryBookByIndex(index, buttonElement) {
+    const book = currentSearchResults[index];
+    if (book) {
+        toggleLibraryBook(book.title, book.author, book.img, buttonElement);
+    }
+}
+
+
+
+    function openModal(shelfKey) { 
+        currentTargetShelf = shelfKey;
+        const modalTitle = document.getElementById('modalTitleText');
+        if (shelfKey === 'myWishlist') {
+            modalTitle.textContent = 'Добавить книгу в список желаемого';
+        } else {
+            modalTitle.textContent = 'Добавить свою книгу в прочитанное';
+        }
+        document.getElementById('addBookModal').style.display = 'flex'; 
     }
 
     function closeModal() {
@@ -634,89 +1238,188 @@
 
     function saveCustomBook() {
         const title = document.getElementById('customTitle').value.trim();
-        let author = document.getElementById('customAuthor').value.trim();
-        let img = document.getElementById('customCover').value.trim();
+        let author = document.getElementById('customAuthor').value.trim() || 'Собственный автор';
+        let img = document.getElementById('customCover').value.trim() || 'https://via.placeholder.com/150x220?text=%D0%A1%D0%B2%D0%BE%D1%8F+%D0%BE%D0%B1%D0%BB%D0%BE%D0%B6%D0%BA%D0%B0';
 
         if (!title) {
             alert('Пожалуйста, введите название книги!');
             return;
         }
 
-        if (!author) {
-            author = 'Собственный автор';
-        }
-
-        if (!img) {
-            img = 'https://via.placeholder.com/150x220?text=%D0%A1%D0%B2%D0%BE%D1%8F+%D0%BE%D0%B1%D0%BB%D0%BE%D0%B6%D0%BA%D0%B0';
-        }
-
-        const library = JSON.parse(localStorage.getItem('myLibrary')) || [];
-        
-        if (library.some(book => book.title === title)) {
-            alert('Книга с таким названием уже есть в вашей библиотеке!');
+        const list = JSON.parse(localStorage.getItem(currentTargetShelf)) || [];
+        if (list.some(book => book.title === title)) {
+            alert('Книга с таким названием уже есть на этой полке!');
             return;
         }
 
-        library.push({ title, author, img, rating: 0 });
-        localStorage.setItem('myLibrary', JSON.stringify(library));
+        list.push({ title, author, img, rating: 0 });
+        localStorage.setItem(currentTargetShelf, JSON.stringify(list));
         
-        renderLibrary();
+        renderShelf(currentTargetShelf, currentTargetShelf === 'myLibrary' ? 'library' : 'wishlist');
         closeModal();
     }
 
-    function toggleLike(title, author, img, buttonElement) {
-        let favorites = JSON.parse(localStorage.getItem('myFavorites')) || [];
-        const index = favorites.findIndex(book => book.title === title);
-        const icon = buttonElement.querySelector('i');
+    function setupGlobalDragAndDrop() {
+    let draggedElement = null;
 
-        if (index === -1) {
-            favorites.push({ title, author, img });
-            buttonElement.classList.add('active');
-            if (icon) {
-                icon.classList.remove('far');
-                icon.classList.add('fas');
+    document.addEventListener('dragstart', (e) => {
+        const container = e.target.closest('.book-3d-container');
+        if (!container) return;
+        
+        draggedElement = container;
+        container.classList.add('dragging');
+        
+        e.dataTransfer.setData('text/plain', container.getAttribute('data-index'));
+        e.dataTransfer.setData('source-shelf', container.getAttribute('data-shelf-source'));
+    });
+
+    document.addEventListener('dragend', (e) => {
+        if (draggedElement) {
+            draggedElement.classList.remove('dragging');
+            draggedElement = null;
+        }
+        document.querySelectorAll('.book-shelf-grid').forEach(shelf => {
+            shelf.style.background = '';
+        });
+        // Перерисовываем для идеального сохранения структуры рядов
+        renderAllShelves();
+    });
+
+    document.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const shelfGrid = e.target.closest('.book-shelf-grid');
+        if (!shelfGrid || !draggedElement) return;
+
+        shelfGrid.style.background = 'rgba(255, 255, 255, 0.5)';
+
+        // Находим ближайшего соседа среди ВСЕХ книг на полке
+        const afterElement = getDragAfterElement(shelfGrid, e.clientX, e.clientY);
+        
+        if (afterElement) {
+            // Определяем целевой ряд соседа
+            const targetRow = afterElement.parentNode;
+            if (targetRow && targetRow.classList.contains('book-shelf-row')) {
+                // Визуально переносим элемент прямо перед соседом
+                targetRow.insertBefore(draggedElement, afterElement);
+                // Балансируем ряды на лету, чтобы в одном ряду не оказалось 9 элементов!
+                balanceRowsOnFly(shelfGrid);
             }
         } else {
-            favorites.splice(index, 1);
-            buttonElement.classList.remove('active');
-            if (icon) {
-                icon.classList.remove('fas');
-                icon.classList.add('far');
+            // Если тащим в самый конец полки — ищем последний ряд
+            const rows = shelfGrid.querySelectorAll('.book-shelf-row');
+            const lastRow = rows[rows.length - 1];
+            if (lastRow) {
+                const plusSlot = lastRow.querySelector('.add-shelf-slot');
+                if (plusSlot) {
+                    lastRow.insertBefore(draggedElement, plusSlot);
+                } else {
+                    lastRow.appendChild(draggedElement);
+                }
+                balanceRowsOnFly(shelfGrid);
             }
         }
+    });
 
-        localStorage.setItem('myFavorites', JSON.stringify(favorites));
-        renderFavorites();
-        renderLibrary();
-    }
+    document.addEventListener('dragleave', (e) => {
+        const shelfGrid = e.target.closest('.book-shelf-grid');
+        if (shelfGrid) {
+            shelfGrid.style.background = '';
+        }
+    });
 
-    function renderFavorites() {
-        const favorites = JSON.parse(localStorage.getItem('myFavorites')) || [];
-        const favoritesDiv = document.getElementById('favorites');
-        if (!favoritesDiv) return;
-        favoritesDiv.innerHTML = '';
+    document.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const targetShelfGrid = e.target.closest('.book-shelf-grid');
+        if (!targetShelfGrid || !draggedElement) return;
 
-        if (favorites.length === 0) {
-            favoritesDiv.innerHTML = '<p>Здесь пока пусто</p>';
-            return;
+        targetShelfGrid.style.background = '';
+
+        const sourceShelfKey = e.dataTransfer.getData('source-shelf');
+        const targetShelfKey = targetShelfGrid.getAttribute('data-shelf');
+        const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+
+        if (!sourceShelfKey || !targetShelfKey || isNaN(sourceIndex)) return;
+
+        const sourceArray = JSON.parse(localStorage.getItem(sourceShelfKey)) || [];
+        const targetArray = sourceShelfKey === targetShelfKey ? sourceArray : (JSON.parse(localStorage.getItem(targetShelfKey)) || []);
+
+        const [movedBook] = sourceArray.splice(sourceIndex, 1);
+        if (!movedBook) return;
+
+        // Фиксируем реальный новый индекс книги на полке в DOM
+        const allContainers = Array.from(targetShelfGrid.querySelectorAll('.book-3d-container'));
+        let newIndex = allContainers.indexOf(draggedElement);
+        
+        if (newIndex === -1) {
+            newIndex = targetArray.length;
         }
 
-        favorites.forEach((book) => {
-            const card = document.createElement('div');
-            card.className = 'book-card';
-            card.setAttribute('onclick', 'handleCardTap(this, event)');
-            const bookAuthor = book.author || 'Неизвестный автор';
-            card.innerHTML = `
-                <button class="btn-like active" onclick="toggleLike('${book.title.replace(/'/g, "\'")}', '${bookAuthor.replace(/'/g, "\'")}', '${book.img}', this); event.stopPropagation();">
-                    <i class="fas fa-heart"></i>
-                </button>
-                <img src="${book.img}" alt="${book.title}">
-                <p>${book.title}</p>
-                <div class="book-author">${bookAuthor}</div>
-            `;
-            favoritesDiv.appendChild(card);
-        });
-    }
+        targetArray.splice(newIndex, 0, movedBook);
+
+        localStorage.setItem(sourceShelfKey, JSON.stringify(sourceArray));
+        if (sourceShelfKey !== targetShelfKey) {
+            localStorage.setItem(targetShelfKey, JSON.stringify(targetArray));
+        }
+
+        renderAllShelves();
+        if (typeof searchBooks === 'function') searchBooks();
+    });
+}
+
+// Вспомогательная функция балансировки: следит, чтобы в каждом ряду было строго по 8 книг во время переноса
+function balanceRowsOnFly(shelfGrid) {
+    const allItems = Array.from(shelfGrid.querySelectorAll('.book-3d-container, .add-shelf-slot'));
+    const rows = Array.from(shelfGrid.querySelectorAll('.book-shelf-row'));
+    
+    // Перераспределяем элементы по рядам (строго по 8 штук на ряд)
+    allItems.forEach((item, index) => {
+        const targetRowIndex = Math.floor(index / 8);
+        
+        // Если контейнера под ряд еще не существует — создаем его
+        if (!rows[targetRowIndex]) {
+            const newRow = document.createElement('div');
+            newRow.className = 'book-shelf-row';
+            shelfGrid.appendChild(newRow);
+            rows.push(newRow);
+        }
+        
+        // Если элемент еще не в том ряду — переносим
+        if (item.parentNode !== rows[targetRowIndex]) {
+            rows[targetRowIndex].appendChild(item);
+        }
+    });
+    
+    // Удаляем пустые ряды, если они образовались в процессе
+    rows.forEach(row => {
+        if (row.children.length === 0) {
+            row.remove();
+        }
+    });
+}
+
+
+
+    function getDragAfterElement(container, x, y) {
+    // Ищем среди всех карточек книг на полке, кроме той, которую тащим в данный момент
+    const draggableElements = [...container.querySelectorAll('.book-3d-container:not(.dragging)')];
+
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        
+        // Проверяем, находится ли курсор в пределах строки элемента
+        const isInRow = y >= box.top && y <= box.bottom;
+        
+        // Расстояние по горизонтали до центра элемента
+        const offset = x - box.left - box.width / 2;
+        
+        if (isInRow && offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
 </script>
 
 </body>
