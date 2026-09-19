@@ -853,33 +853,53 @@ margin-left: 70px;
 
 
 
-    async function searchOpenLibrary(query) {
+    // 1. Создаем глобальную функцию, в которую Open Library вернет данные
+window.handleOpenLibraryResponse = function(data) {
     const fontDiv = document.getElementById('searchResults');
-    try {
-        // ИСПОРАВЛЕНО: используем правильный эндпоинт API, который разрешает CORS
-        const url = `https://openlibrary.org{encodeURIComponent(query)}`;
-        const response = await fetch(url);
-        
-        if (!response.ok) throw new Error('Ошибка сервера OpenLibrary');
-        const data = await response.json();
+    
+    // Удаляем временный тег скрипта со страницы после получения ответа
+    const oldScript = document.getElementById('openLibJsonp');
+    if (oldScript) oldScript.remove();
 
-        if (!data.docs || data.docs.length === 0) {
-            fontDiv.innerHTML = '<p>Ни в одной библиотеке ничего не найдено.</p>';
-            return;
-        }
-
-        const formattedDocs = data.docs.slice(0, 20).map(doc => ({
-            title: doc.title,
-            author_name: doc.author_name ? doc.author_name.join(', ') : 'Неизвестный автор',
-            cover_i: doc.cover_i
-        }));
-
-        renderSearchResults(formattedDocs, 'openlib');
-    } catch (error) {
-        console.error("Детали ошибки:", error);
-        fontDiv.innerHTML = '<p>Ошибка при поиске во всех источниках.</p>';
+    if (!data.docs || data.docs.length === 0) {
+        fontDiv.innerHTML = '<p>Ни в одной библиотеке ничего не найдено.</p>';
+        return;
     }
+
+    const formattedDocs = data.docs.slice(0, 20).map(doc => ({
+        title: doc.title,
+        author_name: doc.author_name ? doc.author_name.join(', ') : 'Неизвестный автор',
+        cover_i: doc.cover_i
+    }));
+
+    renderSearchResults(formattedDocs, 'openlib');
+};
+
+// 2. Сама функция поиска, адаптированная под обход CORS через JSONP
+function searchOpenLibrary(query) {
+    const fontDiv = document.getElementById('searchResults');
+    
+    // Удаляем старый скрипт, если пользователь быстро вводит новый запрос
+    const oldScript = document.getElementById('openLibJsonp');
+    if (oldScript) oldScript.remove();
+
+    // Создаем динамический тег <script>
+    const script = document.createElement('script');
+    script.id = 'openLibJsonp';
+    
+    // Добавляем параметр callback, указывающий на нашу функцию выше
+    script.src = `https://openlibrary.org{encodeURIComponent(query)}&callback=window.handleOpenLibraryResponse`;
+    
+    // В случае внезапного сбоя сети (например, оффлайн)
+    script.onerror = function() {
+        fontDiv.innerHTML = '<p>Ошибка при поиске во всех источниках.</p>';
+        script.remove();
+    };
+
+    // Внедряем скрипт в документ — браузер выполнит его в обход CORS ограничений!
+    document.body.appendChild(script);
 }
+
 
     function renderSearchResults(items, source) {
     const resultsDiv = document.getElementById('searchResults');
