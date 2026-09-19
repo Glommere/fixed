@@ -854,28 +854,32 @@ margin-left: 70px;
 
 
     async function searchOpenLibrary(query) {
-        const fontDiv = document.getElementById('searchResults');
-        try {
-            const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}`;
-            const response = await fetch(url);
-            const data = await response.json();
+    const fontDiv = document.getElementById('searchResults');
+    try {
+        // ИСПОРАВЛЕНО: используем правильный эндпоинт API, который разрешает CORS
+        const url = `https://openlibrary.org{encodeURIComponent(query)}`;
+        const response = await fetch(url);
+        
+        if (!response.ok) throw new Error('Ошибка сервера OpenLibrary');
+        const data = await response.json();
 
-            if (!data.docs || data.docs.length === 0) {
-                fontDiv.innerHTML = '<p>Ни в одной библиотеке ничего не найдено.</p>';
-                return;
-            }
-
-            const formattedDocs = data.docs.slice(0, 20).map(doc => ({
-                title: doc.title,
-                author_name: doc.author_name ? doc.author_name.join(', ') : 'Неизвестный автор',
-                cover_i: doc.cover_i
-            }));
-
-            renderSearchResults(formattedDocs, 'openlib');
-        } catch (error) {
-            fontDiv.innerHTML = '<p>Ошибка при поиске во всех источниках.</p>';
+        if (!data.docs || data.docs.length === 0) {
+            fontDiv.innerHTML = '<p>Ни в одной библиотеке ничего не найдено.</p>';
+            return;
         }
+
+        const formattedDocs = data.docs.slice(0, 20).map(doc => ({
+            title: doc.title,
+            author_name: doc.author_name ? doc.author_name.join(', ') : 'Неизвестный автор',
+            cover_i: doc.cover_i
+        }));
+
+        renderSearchResults(formattedDocs, 'openlib');
+    } catch (error) {
+        console.error("Детали ошибки:", error);
+        fontDiv.innerHTML = '<p>Ошибка при поиске во всех источниках.</p>';
     }
+}
 
     function renderSearchResults(items, source) {
     const resultsDiv = document.getElementById('searchResults');
